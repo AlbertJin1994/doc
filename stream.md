@@ -356,3 +356,206 @@ System.out.println(first.get());
 
 归并 or 缩减 操作。
 
+reduce的作用是把stream中的元素给组合起来。我们可以传入一个初始值，它会按照我们的计算方式依次拿流中的元素和初始值进行计算，计算结果再和后面的元素计算。
+
+reduce中具有3个重载方法，适用于不同场景，第三个方法比较复杂，适合在并行流中使用。
+
+![image-20230821220207517](./assets/image-20230821220207517.png)
+
+求所有作者年龄的和：
+
+```java
+List<Author> authors = getAuthors();
+Integer result = authors.stream()
+        .map(Author::getAge)
+	    // .reduce(0, (result1, element) -> result1 + element);
+        .reduce(0, new BinaryOperator<Integer>() {
+            @Override
+            public Integer apply(Integer result, Integer element) {
+                return result + element;
+            }
+        });
+System.out.println(result);
+```
+
+求所有作者中年龄的最大值：
+
+```java
+List<Author> authors = getAuthors();
+Optional<Integer> max = authors.stream()
+        .map(Author::getAge)
+        // .reduce((result, element) -> result < element ? element : result);
+        .reduce(new BinaryOperator<Integer>() {
+            @Override
+            public Integer apply(Integer result, Integer element) {
+                return result < element ? element : result;
+            }
+        });
+max.ifPresent(System.out::println);
+```
+
+## 2、注意事项
+
+- 惰性求值（如果没有终结操作，没有中间操作是不会得到执行的）；
+
+- 流是一次性的（一旦一个流对象经过一个终结操作后，这个流就不能再被使用）；
+
+- 不会影响数据（我们在流中可以对数据做很多处理，但是正常情况下是不会影响原来集合中的元素的，这也是我们期望的）；
+
+  - 不改变原数据：
+
+    ```java
+    List<Author> authors = getAuthors();
+    authors.stream()
+            .map(x->x.getAge())
+            .map(age->age+10)
+            .forEach(System.out::println);
+    ```
+
+  - 以下就会改变原数据了：
+
+    ```java
+    List<Author> authors = getAuthors();
+    authors.stream()
+            .map(new Function<Author, Author>() {
+                @Override
+                public Author apply(Author author) {
+                    author.setAge(author.getAge() + 10);
+                    return author;
+                }
+            }).forEach(System.out::println);
+    ```
+
+# Optional
+
+## 1、概述
+
+我们在编写代码的时候出现最多的就是空指针异常。所以在很多情况下我们需要做各种非空的判断。
+
+过多的非空判断会让我们的代码显得臃肿不堪，所以在JDK8中引入了Optional。
+
+养成使用Optional的习惯后你可以写出更优雅的代码来避免空指针异常。
+
+并且在很多函数式编程相关的API中也都用到了Optional。
+
+Optional就好像是包装类，可以把我们的具体数据封装到Optional对象内部，然后我们去使用Optional中封装好的方法操作封装进去的数据就可以非常优雅的避免空指针异常。
+
+## 2、使用
+
+### 2.1、创建对象
+
+#### 2.1.1、Optional.ofNullable(x)
+
+一般使用这种ofNullable来把数据封装成一个Optional对象，无论传入的参数是否为null都不会出现问题。
+
+在实际开发中，很多数据都是从数据库获取的。而且MyBatis从3.5版本开始支持Optional，可以直接把Dao方法的返回值类型定义成Optional类型，MyBatis会自己把数据封装成Optional对象返回，封装的过程也不需要我们自己操作。
+
+```java
+Author author = getAuthor();
+Optional<Author> authorOptional = Optional.ofNullable(author);
+```
+
+ofNullable的底层实现：
+
+```java
+public static <T> Optional<T> ofNullable(T value) {
+    return value == null ? empty() : of(value);
+}
+
+public static<T> Optional<T> empty() {
+    @SuppressWarnings("unchecked")
+    Optional<T> t = (Optional<T>) EMPTY;
+    return t;
+}
+
+private static final Optional<?> EMPTY = new Optional<>();
+
+private Optional() {
+    this.value = null;
+}
+```
+
+#### 2.1.2、Optional.of(x)
+
+如果确定一个对象不为空则可以使用of来把数据封装成Optional对象，但是如果传入的参数为null，则会出现空指针异常。
+
+```java
+Optional<Author> authorOptional = Optional.of(null);
+```
+
+```tex
+Exception in thread "main" java.lang.NullPointerException
+	at java.util.Objects.requireNonNull(Objects.java:203)
+	at java.util.Optional.<init>(Optional.java:96)
+	at java.util.Optional.of(Optional.java:108)
+	at org.yeahicode.StreamNewDemo.test25(StreamNewDemo.java:47)
+	at org.yeahicode.StreamNewDemo.main(StreamNewDemo.java:40)
+```
+
+#### 2.1.3、Optional.empty()
+
+将null包装成Optional对象。
+
+```java
+Optional<Object> empty = Optional.empty();
+```
+
+底层实现：
+
+```java
+public static<T> Optional<T> empty() {
+    @SuppressWarnings("unchecked")
+    Optional<T> t = (Optional<T>) EMPTY;
+    return t;
+}
+
+private static final Optional<?> EMPTY = new Optional<>();
+
+private Optional() {
+    this.value = null;
+}
+```
+
+### 2.2、安全消费值 - ifPresent
+
+```java
+Author author = getAuthor();
+Optional<Author> authorOptional = Optional.ofNullable(author);
+// 当封装的数据不为空时才执行ifPresent中的代码
+authorOptional.ifPresent(System.out::println);
+```
+
+### 2.3、不安全获取值 - get
+
+当Optional内部的数据为空的时候，通过get获取值会出现异常：
+
+```java
+authorOptional.get();
+```
+
+```tex
+Exception in thread "main" java.util.NoSuchElementException: No value present
+	at java.util.Optional.get(Optional.java:135)
+	at org.yeahicode.StreamNewDemo.test25(StreamNewDemo.java:49)
+	at org.yeahicode.StreamNewDemo.main(StreamNewDemo.java:40)
+```
+
+### 2.4、安全获取值
+
+#### 2.4.1、orElseGet
+
+![image-20230822231244916](./assets/image-20230822231244916.png)
+
+存在值则直接返回，不存在则返回orElseGet中特别设置的默认值（可返回子类）：
+
+```java
+// Author author1 = authorOptional.orElseGet(() -> new Author());
+Author author1 = authorOptional.orElseGet(new Supplier<Author>() {
+    @Override
+    public Author get() {
+        return new Author();
+    }
+});
+```
+
+#### 2.4.2、orElseThrow
