@@ -559,3 +559,114 @@ Author author1 = authorOptional.orElseGet(new Supplier<Author>() {
 ```
 
 #### 2.4.2、orElseThrow
+
+存在值则直接返回，不存在则可根据你传入的参数来抛异常：
+
+```java
+// Author author1 = authorOptional.orElseThrow((Supplier<Throwable>) () -> new RuntimeException("error"));
+Author author1 = authorOptional.orElseThrow(new Supplier<Throwable>() {
+    @Override
+    public Throwable get() {
+        return new RuntimeException("error");
+    }
+});
+```
+
+### 2.5、过滤 - filter
+
+如果原本有数据，则返回原Optional对象，如果不符合过滤条件，则返回一个无数据的Optional对象：
+
+```
+Optional<Author> author = Optional.ofNullable(getAuthor());
+Optional<Author> authorOptional = author.filter(author1 -> author1.getAge() > 88);
+System.out.println(authorOptional.orElse(new Author()));
+```
+
+### 2.6、判断 - isPresent
+
+判断Optional对象是否存在数据，只是返回true或false，更推荐ifPresent。
+
+### 2.7、数据转换 - map
+
+和Stream流中的用法一致，可对数据进行计算和转换：
+
+```java
+Author author = getAuthor();
+Optional<Author> author1 = Optional.ofNullable(author);
+Optional<List<Book>> books = author1.map(author2 -> author2.getBooks());
+books.ifPresent(x-> System.out.println(books));
+```
+
+# 函数式接口
+
+## 1、概述
+
+只有一个抽象方法的接口我们称之为函数接口。
+
+JDK的函数式接口都加上了`@FunctionInterface`注解进行标识。但是无论是否加上该注解，只要接口中只有一个抽象方法，都是函数式接口。
+
+若`@FunctionInterface`下的接口存在两个抽象方法，则报错：
+
+![image-20230823073426838](./assets/image-20230823073426838.png)
+
+可使用新特性，将其中一个方法设置成接口中的默认方法：
+
+![image-20230823073514769](./assets/image-20230823073514769.png)
+
+## 2、常见函数式接口
+
+### 2.1、Consumer消费接口
+
+只消费参数，不返回：
+
+![image-20230823073809646](./assets/image-20230823073809646.png)
+
+### 2.2、Function计算转换接口
+
+消费参数，并返回：
+
+![image-20230823073857490](./assets/image-20230823073857490.png)
+
+### 2.3、Predicate判断接口
+
+消费参数，并判断：
+
+![image-20230823073946663](./assets/image-20230823073946663.png)
+
+### 2.4、Supplier生产型接口
+
+不消费，并生产返回值：
+
+![image-20230823074027674](./assets/image-20230823074027674.png)
+
+## 3、常用的默认方法
+
+### 3.1、Predicate - and
+
+```java
+List<Author> authors = getAuthors();
+authors.stream()
+        .filter(
+                new Predicate<Author>() {
+                    @Override
+                    public boolean test(Author author) {
+                        return author.getAge() > 17;
+                    }
+                }.and(new Predicate<Author>() {
+                    @Override
+                    public boolean test(Author author) {
+                        return author.getName().length() > 1;
+                    }
+                })
+        ).forEach(System.out::println);
+```
+
+```java
+List<Author> authors = getAuthors();
+authors.stream()
+        .filter(
+                ((Predicate<Author>) author -> author.getAge() > 17).and(author -> author.getName().length() > 1)
+        ).forEach(System.out::println);
+```
+
+### 3.2、
