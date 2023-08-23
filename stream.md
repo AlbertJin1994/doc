@@ -208,6 +208,10 @@ authors.stream()
         .forEach(System.out::println);
 ```
 
+#### 1.2.8、peek
+
+调试用，可消费元素。
+
 ### 1.3、终结操作
 
 #### 1.3.1、forEach
@@ -483,7 +487,7 @@ private Optional() {
 Optional<Author> authorOptional = Optional.of(null);
 ```
 
-```tex
+```bash
 Exception in thread "main" java.lang.NullPointerException
 	at java.util.Objects.requireNonNull(Objects.java:203)
 	at java.util.Optional.<init>(Optional.java:96)
@@ -533,7 +537,7 @@ authorOptional.ifPresent(System.out::println);
 authorOptional.get();
 ```
 
-```tex
+```bash
 Exception in thread "main" java.util.NoSuchElementException: No value present
 	at java.util.Optional.get(Optional.java:135)
 	at org.yeahicode.StreamNewDemo.test25(StreamNewDemo.java:49)
@@ -643,6 +647,8 @@ JDK的函数式接口都加上了`@FunctionInterface`注解进行标识。但是
 
 ### 3.1、Predicate - and
 
+打印作家中年龄大于17并且姓名的长度大于1的作家：
+
 ```java
 List<Author> authors = getAuthors();
 authors.stream()
@@ -669,4 +675,227 @@ authors.stream()
         ).forEach(System.out::println);
 ```
 
-### 3.2、
+### 3.2、Predicate - or
+
+打印作家中年龄大于17或者姓名的长度小于2的作家：
+
+```java
+List<Author> authors = getAuthors();
+authors.stream()
+        .filter(
+                ((Predicate<Author>) author -> author.getAge() > 17).or(author -> author.getName().length() < 2)
+        ).forEach(System.out::println);
+```
+
+### 3.3、Predicate - negate
+
+打印作家中年龄不大于17的作家：
+
+```java
+List<Author> authors = getAuthors();
+authors.stream()
+        .filter(
+                ((Predicate<Author>) author -> author.getAge() > 17).negate()
+        ).forEach(System.out::println);
+```
+
+# 方法引用
+
+## 1、引用类的静态方法
+
+```java
+List<Author> authors = getAuthors();
+authors.stream().map(x -> x.getAge()).map(age -> String.valueOf(age)).forEach(System.out::println);
+```
+
+```java
+List<Author> authors = getAuthors();
+authors.stream().map(x -> x.getAge()).map(String::valueOf).forEach(System.out::println);
+```
+
+## 2、引用对象的实例方法
+
+```java
+List<Author> authors = getAuthors();
+StringBuilder sb = new StringBuilder();
+authors.stream().map(x -> x.getName()).forEach(name -> sb.append(name));
+```
+
+```java
+List<Author> authors = getAuthors();
+StringBuilder sb = new StringBuilder();
+authors.stream().map(x -> x.getName()).forEach(sb::append);
+```
+
+## 3、引用类的实例方法
+
+```java
+interface UseString{
+    String use(String str,int start,int length);
+}
+
+public static String subAuthorName(String str, UseString useString){
+    int start = 0;
+    int length = 1;
+    return useString.use(str,start,length);
+}
+
+public static void main(String[] args) {
+    subAuthorName("方法引用", new UseString() {
+        @Override
+        public String use(String str, int start, int length) {
+            return str.substring(start,length);
+        }
+    });
+}
+```
+
+```java
+public static void main(String[] args) {
+    subAuthorName("方法引用", String::substring);
+}
+```
+
+## 4、构造器引用
+
+```java
+List<Author> authors = getAuthors();
+authors.stream()
+        .map(author -> author.getName())
+        .map(name -> new StringBuilder(name))
+        .map(sb -> sb.append("-Hello").toString())
+        .forEach(str -> System.out.println(str));
+```
+
+# 高级用法
+
+## 1、基本数据类型优化
+
+之前用到的很多Stream方法由于都使用了泛型，所以涉及到的参数和返回值都是引用数据类型。
+
+即使操作的是整数小数，但是实际用的都是他们的包装类。JDK5中引入的自动装箱和自动拆箱让我们在使用对应的包装类时就好像使用基本数据类型一样方便。但是装箱和拆箱肯定是要消耗时间，特别是在数据量大的情况下不断的装箱拆箱，就会有特别大的损耗了。
+
+```java
+List<Author> authors = getAuthors();
+authors.stream()
+        .map(new Function<Author, Integer>() {
+            @Override
+            public Integer apply(Author author) {
+                return author.getAge();
+            }
+        })
+        // 此时转换成了Integer
+        .map(new Function<Integer, Integer>() {
+            @Override
+            public Integer apply(Integer age) {
+                // 先拆箱，后装箱
+                return age + 10;
+            }
+        })
+        .filter(new Predicate<Integer>() {
+            @Override
+            public boolean test(Integer age) {
+                // 这里又拆箱
+                return age > 18;
+            }
+        })
+        .map(new Function<Integer, Integer>() {
+            @Override
+            public Integer apply(Integer age) {
+                // 先拆箱，后装箱
+                return age + 2;
+            }
+        })
+        .forEach(System.out::println);
+```
+
+为了对这部分消耗时间进行优化，Stream还提供了很多专门针对基本数据类型的方法。
+
+例如：mapToInt，mapToLong，mapToDouble，flatMapToInt，flatMapToDouble等等。
+
+```java
+List<Author> authors = getAuthors();
+authors.stream()
+        // 将流中的数据类型转换成基本数据类型
+        .mapToInt(author -> author.getAge())
+        // 此后的流操作就统一使用基本数据，避免拆箱装箱产生的损耗
+        .map(age -> age + 10)
+        .filter(age -> age > 18)
+        .map(age -> age + 2)
+        .forEach(System.out::println);
+```
+
+## 2、并行流
+
+### 2.1、概述
+
+之前使用的都是串行流，在数据量不大的情况下，串行流和并行流区别不大，甚至在某些情况下，并行还要花费更多的时间（线程的上下文切换需要消耗时间）。
+
+```java
+Stream<Integer> integerStream = Stream.of(1, 2, 3, 4, 5, 6, 7, 8, 9);
+System.out.println(
+        integerStream.peek(new Consumer<Integer>() {
+            @Override
+            public void accept(Integer integer) {
+                System.out.println(String.format("%s >>> %s", String.valueOf(integer), Thread.currentThread().getName()));
+            }
+        }).reduce((result, ele) -> result + ele).get());
+```
+
+使用串行流的情况下，打印结果显示都在同一个线程中操作：
+
+```bash
+1 >>> main
+2 >>> main
+3 >>> main
+4 >>> main
+5 >>> main
+6 >>> main
+7 >>> main
+8 >>> main
+9 >>> main
+45
+```
+
+当流中有大量元素时，可以使用并行流去提高操作的效率。其实并行流就是把任务分配给多个线程去完成。如果我们自己去用代码实现的话会非常的复杂，并且需要对并发编程有足够的理解和认识。而如果使用Stream的话，我们只需要使用一个API，就能将串行流转换成并行流来帮我们实现，从而提高效率。
+
+### 2.2、创建并行流
+
+#### 2.2.1、创建 stream.parallel()
+
+```java
+Stream<Integer> integerStream = Stream.of(1, 2, 3, 4, 5, 6, 7, 8, 9);
+System.out.println(
+        integerStream.parallel().peek(new Consumer<Integer>() {
+            @Override
+            public void accept(Integer integer) {
+                System.out.println(String.format("%s >>> %s", String.valueOf(integer), Thread.currentThread().getName()));
+            }
+        }).reduce((result, ele) -> result + ele).get());
+```
+
+```bash
+2 >>> ForkJoinPool.commonPool-worker-6
+9 >>> ForkJoinPool.commonPool-worker-13
+4 >>> ForkJoinPool.commonPool-worker-15
+1 >>> ForkJoinPool.commonPool-worker-8
+3 >>> ForkJoinPool.commonPool-worker-9
+7 >>> ForkJoinPool.commonPool-worker-4
+5 >>> ForkJoinPool.commonPool-worker-11
+6 >>> main
+8 >>> ForkJoinPool.commonPool-worker-2
+45
+```
+
+#### 2.2.2、集合.parallelStream()
+
+```java
+List<Author> authors = getAuthors();
+authors.parallelStream()
+        .peek(new Consumer<Author>() {
+            @Override
+            public void accept(Author author) {
+                System.out.println(Thread.currentThread().getName() + " >>> " + author);
+            }
+        }).forEach(System.out::println);
+```
