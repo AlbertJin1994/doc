@@ -388,3 +388,180 @@ abc/
 temp/*.txt
 ```
 
+# 8、补充整理
+
+## 8.1、Git工作流程
+
+![image-20230824070602607](./assets/image-20230824070602607.png)
+
+## 8.2、Git实操
+
+设置用户，让别人知道是谁提交的代码：
+
+```bash
+#因为设置的用户名有空格，所以需要加双引号
+git config --global user.name "Liu Sibin"
+git config --global user.email lsben1014@gmail.com
+```
+
+初始化，告诉别人这个文件夹需要版本控制：
+
+设置完了之后，文件夹里就会多了一个`.git`文件夹，初始化后，默认处于主分支`master`。
+
+```bash
+git init
+```
+
+查看文件状态：
+
+```bash
+git staus
+```
+
+将文件提交至暂存区（需要退回等操作，可通过git status提供的提示查看）：
+
+```bash
+git add
+```
+
+将文件提交至本地仓库（需要退回等操作，可通过git status提供的提示查看）：
+
+```bash
+git commit
+```
+
+同一个文件分别有不同状态在工作区和暂存区可一起提交至本地仓库：
+
+```bash
+git commit -m "message"
+```
+
+将文件从暂存区直接提交至本地仓库：
+
+```bash
+git commit -a -m "all"
+git commit -am "all"
+```
+
+查看前面提交的版本：
+
+```bash
+git log
+```
+
+HEAD => master含义：当前处于哪个版本的哪个分支：
+
+![image-20230824072216778](./assets/image-20230824072216778.png)
+
+创建`.gitignore`配置文件，忽略不需要提交的文件：
+
+接着在配置文件中`.gitignore`中设置需要忽略的文件信息。
+
+```bash
+touch .gitignore
+```
+
+创建新分支：
+
+该命令不会让你马上切换至新分支。
+
+```bash
+git branch test
+```
+
+查看所有分支：
+
+```bash
+git branch
+```
+
+切换至分支：
+
+切换后，本地文件夹里的文件是从主分支`master`复制过来的。
+
+```bash
+git checkout test
+```
+
+切换至主分支（或其他分支），删除`test`分支：
+
+```bash
+git branch -d test
+```
+
+但当`test`分支和主分支`master`存在差异的时候，会提示你`test`分支还未完全被合并，如果真的确定要删除该分支，则使用以下强制命令：
+
+```bash
+git branch -D test
+```
+
+创建新分支并马上切换至新分支：
+
+```bash
+git checkout -b temp
+```
+
+在`temp`分支上添加内容，接着切换至主分支`master`，然后将`temp`上新添加的内容合并过来：
+
+```bash
+git checkout master
+git merge temp
+```
+
+解决冲突：
+
+`HEAD`表示的是当前所在分支的内容，`master`表示的是想要合并的分支中的内容。
+
+![image-20230824073559144](./assets/image-20230824073559144.png)
+
+## 8.3、GitHub
+
+克隆远程仓库至本地：
+
+克隆完成后，就可以看到`.git`文件夹了，如果只是`Download`的话`zip`包里是不存在`.git`文件夹。
+
+```bash
+git clone url
+```
+
+查看远程仓库地址：
+
+```bash
+git remote -v
+```
+
+默认都会使用`origin`来表示远程仓库的名字，在操作时通过`origin`代替远程仓库地址：
+
+![image-20230824074306555](./assets/image-20230824074306555.png)
+
+提交至远程仓库：
+
+```bash
+git push
+```
+
+在2021年后就不支持通过账号密码的方式来提交代码了，需要我们生成个人访问token：
+
+在GitHub上生成好访问token，再次提交代码，输入用户名，然后不要输入密码，粘贴生成好的token，这样就可以将代码提交至远程仓库了。
+
+![image-20230824074424013](./assets/image-20230824074424013.png)
+
+将远程仓库的新变动拉取到本地仓库：
+
+也可以在后面指定远程仓库和分支名。
+
+```bash
+git fetch
+```
+
+查看本地仓库和远程仓库的区别：
+
+```bash
+git diff orgin/main
+```
+
+如果没有问题，则可将远程仓库的内容整合到工作区：
+
+```bash
+git pull
+```
